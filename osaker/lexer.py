@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .typings import TokenT
+    from typing import Tuple
 
-from sly import Lexer
+    from .token import Token
 
 from .logger import osaker_logger
 
@@ -12,19 +12,9 @@ __all__ = (
     "OsakerLexer",
 )
 
-class OsakerLexer(Lexer):
-    tokens = {
-        NAME, ASSIGN, LITERAL, TYPE_DEFINE, PLUS, TIMES, MINUS, DIVIDE, LPAREN, RPAREN, 
-    }
-    ignore = " \t"
+class OsakerLexer():
+    IGNORE = " \t"
 
-    # Tokens
-    NAME = r"[a-zA-Z_][a-zA-Z0-9_]*"
-    ASSIGN = r"<--"
-    TYPE_DEFINE = r"~"
-    LITERAL = r"""^["'][^"']*["']$|^\d+(\.\d+)?$"""
-
-    # Special symbols
     PLUS = r"\+"
     MINUS = r"-"
     TIMES = r"\*"
@@ -32,13 +22,8 @@ class OsakerLexer(Lexer):
     LPAREN = r"\("
     RPAREN = r"\)"
 
-    # Ignored pattern
-    ignore_newline = r"\n+"
+    ASSIGN = r"<--"
+    TYPE_DEFINE = r"~"
 
-    # Extra action for newlines
-    def ignore_newline(self, t):
-        self.lineno += t.value.count("\n")
-
-    def error(self, token: TokenT):
-        osaker_logger.error(f"Illegal character '{token.value[0]}'!")
-        self.index += 1
+    def tokenize(self) -> Tuple[Token]:
+        ...
