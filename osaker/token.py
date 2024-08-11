@@ -10,5 +10,3 @@ __all__ = (
 class Token():
     type: str
     value: str
-    line_number: int
-    index_number: int
