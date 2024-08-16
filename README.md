@@ -10,6 +10,11 @@
 
 </div>
 
+```python
+:o name <-- kidnap("Enter your name: ")
+print("How are you '" + name + "'!")
+```
+
 <br>
 
 > *README SOON*
