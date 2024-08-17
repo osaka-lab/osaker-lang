@@ -20,9 +20,15 @@ class OsakerLexer():
     ]
 
     tokens: Dict[str, str] = {
+        "VAR_DEFINE": ":o",
+
         "NAME": r"[a-zA-Z_][a-zA-Z0-9_]*",
-        "ASSIGN": r"<--",
-        "TYPE_DEFINE": r"~",
+        "ASSIGN": "<--",
+
+        "NUMBER": r"(?<!<)-?\b\d+\b",
+        "STRING": r"(['\"])(?:\\.|[^\\])*?\1",
+
+        "TYPE": r"~[a-zA-Z0-9_]+",
 
         "PLUS": r"\+",
         "MINUS": r"-",
@@ -66,9 +72,9 @@ class OsakerLexer():
                     position = match.end()
                     break
 
-            if match is None:
-                raise OsakerError(
-                    f"Osaker does not know of '{char}'! (The Osaker Lexer was not able to tokenise this)"
-                )
+            #if match is None:
+            #    raise OsakerError(
+            #        f"Osaker does not know of '{char}'! (The Osaker Lexer was not able to tokenise this)"
+            #    )
 
         return tokens

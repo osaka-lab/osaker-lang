@@ -6,12 +6,7 @@ if TYPE_CHECKING:
 
     from .token import Token
 
-from pprint import pformat
-from devgoldyutils import Colours
-
-from .lexer import OsakerLexer
-from .logger import osaker_logger
-from .exception import OsakerError
+from pprint import pprint
 
 __all__ = (
     "OsakerParser"
@@ -27,4 +22,4 @@ class OsakerParser():
         self._globals: Dict[str, Tuple[object, str]] = {}
 
     def parse(self, tokens: List[Token]) -> None:
-        print(">>>", tokens)
+        pprint(tokens)
