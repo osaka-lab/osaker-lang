@@ -72,9 +72,4 @@ class OsakerLexer():
                     position = match.end()
                     break
 
-            #if match is None:
-            #    raise OsakerError(
-            #        f"Osaker does not know of '{char}'! (The Osaker Lexer was not able to tokenise this)"
-            #    )
-
         return tokens
