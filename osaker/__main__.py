@@ -5,6 +5,8 @@ if TYPE_CHECKING:
     ...
 
 import typer
+import logging
+import readline
 import platform
 from devgoldyutils import Colours
 
@@ -27,8 +29,11 @@ def execute_code(
 
     command_input: Optional[str] = typer.Option(
         None, "-c", "-i", help = "Passes the text directly to the interpreter as osaker code."
-    )
+    ),
+    debug: bool = typer.Option(help = "Log to the console useful information from the interpreter.")
 ):
+    if debug:
+        osaker_logger.setLevel(logging.DEBUG)
 
     if file is not None:
         raise typer.Exit() # TODO: Run code inside script file.
