@@ -14,7 +14,7 @@ from . import __version__
 from .lexer import OsakerLexer
 from .parser import OsakerParser
 from .logger import osaker_logger
-from .exception import OsakerError, OsakerParseError
+from .errors import OsakerError, OsakerParseError
 
 app = typer.Typer(
     pretty_exceptions_enable = False, 

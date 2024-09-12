@@ -19,7 +19,7 @@ class OsakerLexer():
 
     tokens: Dict[str, str] = {
         "OP_DELETE": ":3",
-        "OP_DEFINE": ":o", # TODO: Capital "o" should also be allowed.
+        "OP_DEFINE": r":[oO]",
         "OP_INSPECT": ":<",
 
         "NAME": r"[!a-zA-Z_][a-zA-Z0-9_]*",
@@ -27,7 +27,7 @@ class OsakerLexer():
 
         "LITERAL": r"(?<!<)-?\b\d+\b|(['\"])(?:\\.|[^\\])*?\1",
 
-        "TYPE": r"~[a-zA-Z0-9_]+",
+        "TYPE": r"[~-][a-zA-Z0-9_]+", # characters starting with either "-" or "~"
 
         "PLUS": r"\+",
         "MINUS": r"-",
@@ -81,7 +81,7 @@ class OsakerLexer():
         value = None
 
         if token_type == "TYPE":
-            value = token_value.replace("~", "")
+            value = token_value.replace("~", "").replace("-", "")
         elif token_type == "LITERAL":
             value = token_value.replace('"', "").replace("'", "")
         else:

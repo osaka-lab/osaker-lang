@@ -13,3 +13,6 @@ class OsakerParseError(OsakerError):
 
 class OsakerSyntaxError(OsakerError):
     ...
+
+class OsakerIncorrectTypeError(OsakerError):
+    ...
