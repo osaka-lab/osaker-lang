@@ -87,7 +87,7 @@ def interpret_code_and_handle_exceptions(
 
     except KeyboardInterrupt as e:
         osaker_logger.error(
-            f"You interrupted Osaka with your loud ass keyboard!"
+            f"You interrupted Osaka with your loud ass keyboard! Error: {e}"
         )
 
         raise typer.Exit(130)

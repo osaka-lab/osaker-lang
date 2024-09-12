@@ -19,7 +19,7 @@ class OsakerLexer():
 
     tokens: Dict[str, str] = {
         "OP_DELETE": ":3",
-        "OP_DEFINE": ":o",
+        "OP_DEFINE": ":>",
 
         "NAME": r"[a-zA-Z_][a-zA-Z0-9_]*",
         "ASSIGN": "<--",
