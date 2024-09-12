@@ -82,7 +82,7 @@ class OsakerLexer():
         if token_type == "TYPE":
             value = token_value.replace("~", "")
         elif token_type == "LITERAL":
-            value = token_value.replace('"', "")
+            value = token_value.replace('"', "").replace("'", "")
         else:
             value = token_value
 

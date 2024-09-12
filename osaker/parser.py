@@ -6,8 +6,9 @@ if TYPE_CHECKING:
 
     from .token import Token
 
+import random
 from pprint import pformat
-from devgoldyutils import LoggerAdapter
+from devgoldyutils import LoggerAdapter, Colours
 
 from .logger import osaker_logger
 from .exception import OsakerSyntaxError
@@ -26,6 +27,10 @@ class OsakerParser():
 
     def __init__(self):
         self._globals: Dict[str, object] = {}
+
+        self.__reverse_types: Dict[type, type] = dict(
+            (v, k) for k, v in self.types.items()
+        )
 
     def parse(self, tokens: List[Token]) -> None:
         logger.debug(f"Tokens --> {pformat(tokens)}")
@@ -69,8 +74,19 @@ class OsakerParser():
         next_token = next(tokens, None)
 
         if next_token is None or not next_token.type == "TYPE":
+            _type = self.__guess_literal_type(literal_token.value)
+            osaka_type = self.__reverse_types[_type]
+
+            hint_value = Colours.ORANGE.apply(f'"{literal_token.value}"')
+
+            if _type is int:
+                hint_value = Colours.BLUE.apply(literal_token.value)
+
+            hint_msg = f"Did you mean: {hint_value} ~ {Colours.CLAY.apply(osaka_type)}"
+
             raise OsakerSyntaxError(
-                "The type of the literal must be defined! For example: '\"Hello, World!\" ~nyan'"
+                "The type of the literal must be defined! For example: '\"Hello, World!\" ~nyan'\n" 
+                    + self.__format_hint(hint_msg)
             )
 
         type_define_token = next_token
@@ -78,3 +94,18 @@ class OsakerParser():
         type_ = self.types[type_define_token.value]
 
         self._globals[variable_token.value] = type_(literal_token.value)
+
+    def __guess_literal_type(self, literal: str) -> type:
+
+        try:
+            int(literal)
+            return int
+        except ValueError:
+            pass
+
+        return str
+
+    def __format_hint(self, message: str) -> str:
+        face = random.choice(["(˶˃ ᵕ ˂˶) .ᐟ.ᐟ", "(˶ᵔ ᵕ ᵔ˶)"])
+
+        return f"\n   {Colours.PINK_GREY.apply(face)} {message}\n"
