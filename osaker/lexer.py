@@ -20,8 +20,9 @@ class OsakerLexer():
     tokens: Dict[str, str] = {
         "OP_DELETE": ":3",
         "OP_DEFINE": ":o", # TODO: Capital "o" should also be allowed.
+        "OP_INSPECT": ":<",
 
-        "NAME": r"[a-zA-Z_][a-zA-Z0-9_]*",
+        "NAME": r"[!a-zA-Z_][a-zA-Z0-9_]*",
         "ASSIGN": "<--",
 
         "LITERAL": r"(?<!<)-?\b\d+\b|(['\"])(?:\\.|[^\\])*?\1",

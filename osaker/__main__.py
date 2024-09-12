@@ -14,7 +14,7 @@ from . import __version__
 from .lexer import OsakerLexer
 from .parser import OsakerParser
 from .logger import osaker_logger
-from .exception import OsakerError
+from .exception import OsakerError, OsakerParseError
 
 app = typer.Typer(
     pretty_exceptions_enable = False, 
@@ -71,12 +71,17 @@ def interpret_code_and_handle_exceptions(
     try:
         parser.parse(lexer.tokenize(text))
 
-    except OsakerError as e:
-        osaker_logger.error(
+    except OsakerParseError as e:
+        osaker_logger.critical(
             f"{Colours.BOLD_RED}{e.__class__.__name__}:{Colours.RESET} {e}"
         )
 
         raise typer.Exit(1)
+
+    except OsakerError as e:
+        osaker_logger.error(
+            f"{Colours.BOLD_RED}{e.__class__.__name__}:{Colours.RESET} {e}"
+        )
 
     except EOFError as e:
         osaker_logger.error(
