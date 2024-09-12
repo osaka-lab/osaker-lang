@@ -1,16 +1,12 @@
 from __future__ import annotations
-from typing import Any
 
 from dataclasses import dataclass
 
 __all__ = (
-    "TokenT",
+    "Token",
 )
 
 @dataclass
-class TokenT():
+class Token():
     type: str
-    value: Any
-    lineno: int
-    index: int
-    end: int
+    value: str

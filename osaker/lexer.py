@@ -2,43 +2,88 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .typings import TokenT
+    from typing import List, Dict
 
-from sly import Lexer
+import re
 
-from .logger import osaker_logger
+from .token import Token
 
 __all__ = (
     "OsakerLexer",
 )
 
-class OsakerLexer(Lexer):
-    tokens = {
-        NAME, ASSIGN, LITERAL, TYPE_DEFINE, PLUS, TIMES, MINUS, DIVIDE, LPAREN, RPAREN, 
+class OsakerLexer():
+    ignore = [      
+        " ", "\t"
+    ]
+
+    tokens: Dict[str, str] = {
+        "OP_DELETE": ":3",
+        "OP_DEFINE": ":>",
+
+        "NAME": r"[a-zA-Z_][a-zA-Z0-9_]*",
+        "ASSIGN": "<--",
+
+        "LITERAL": r"(?<!<)-?\b\d+\b|(['\"])(?:\\.|[^\\])*?\1",
+
+        "TYPE": r"~[a-zA-Z0-9_]+",
+
+        "PLUS": r"\+",
+        "MINUS": r"-",
+        "TIMES": r"\*",
+        "DIVIDE": r"/",
+        "LPAREN": r"\(",
+        "RPAREN": r"\)",
     }
-    ignore = " \t"
 
-    # Tokens
-    NAME = r"[a-zA-Z_][a-zA-Z0-9_]*"
-    ASSIGN = r"<--"
-    TYPE_DEFINE = r"~"
-    LITERAL = r"""^["'][^"']*["']$|^\d+(\.\d+)?$"""
+    def __init__(self) -> None:
+        self.tokens_compiled: Dict[str, re.Pattern] = {}
 
-    # Special symbols
-    PLUS = r"\+"
-    MINUS = r"-"
-    TIMES = r"\*"
-    DIVIDE = r"/"
-    LPAREN = r"\("
-    RPAREN = r"\)"
+        for token in self.tokens:
+            self.tokens_compiled[token] = re.compile(self.tokens[token])
 
-    # Ignored pattern
-    ignore_newline = r"\n+"
+    def tokenize(self, string: str) -> List[Token]:
+        tokens: List[Token] = []
 
-    # Extra action for newlines
-    def ignore_newline(self, t):
-        self.lineno += t.value.count("\n")
+        position = 0
 
-    def error(self, token: TokenT):
-        osaker_logger.error(f"Illegal character '{token.value[0]}'!")
-        self.index += 1
+        for char in string:
+
+            if char in self.ignore:
+                position += 1
+                continue
+
+            match = None
+
+            for token_type in self.tokens_compiled:
+                match = self.tokens_compiled[token_type].match(string, position)
+
+                if match:
+                    token_value = match.group(0)
+                    tokens.append(
+                        Token(
+                            type = token_type,
+                            value = self.__manipulate_token_value(token_type, token_value)
+                        )
+                    )
+
+                    position = match.end()
+                    break
+
+        return tokens
+
+    def __manipulate_token_value(
+        self, 
+        token_type: str, 
+        token_value: str
+    ) -> str:
+        value = None
+
+        if token_type == "TYPE":
+            value = token_value.replace("~", "")
+        elif token_type == "LITERAL":
+            value = token_value.replace('"', "").replace("'", "")
+        else:
+            value = token_value
+
+        return value

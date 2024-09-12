@@ -5,6 +5,8 @@ if TYPE_CHECKING:
     ...
 
 import typer
+import logging
+import readline
 import platform
 from devgoldyutils import Colours
 
@@ -27,8 +29,11 @@ def execute_code(
 
     command_input: Optional[str] = typer.Option(
         None, "-c", "-i", help = "Passes the text directly to the interpreter as osaker code."
-    )
+    ),
+    debug: bool = typer.Option(False, help = "Log to the console useful information from the interpreter.")
 ):
+    if debug:
+        osaker_logger.setLevel(logging.DEBUG)
 
     if file is not None:
         raise typer.Exit() # TODO: Run code inside script file.
@@ -68,7 +73,7 @@ def interpret_code_and_handle_exceptions(
 
     except OsakerError as e:
         osaker_logger.error(
-            f"{Colours.BOLD_RED}Osaker Exception:{Colours.RESET} {e}"
+            f"{Colours.BOLD_RED}{e.__class__.__name__}:{Colours.RESET} {e}"
         )
 
         raise typer.Exit(1)
@@ -82,7 +87,7 @@ def interpret_code_and_handle_exceptions(
 
     except KeyboardInterrupt as e:
         osaker_logger.error(
-            f"You interrupted Osaka with your loud ass keyboard!"
+            f"You interrupted Osaka with your loud ass keyboard! Error: {e}"
         )
 
         raise typer.Exit(130)

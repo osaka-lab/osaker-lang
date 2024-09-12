@@ -1,0 +1,4 @@
+target-version = "py39"
+
+[lint.per-file-ignores]
+"osaker/__main__.py" = ["F401"]

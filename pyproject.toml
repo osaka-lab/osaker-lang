@@ -24,7 +24,6 @@ classifiers = [
 ]
 dependencies = [
     "typer",
-    "sly@git+https://github.com/dabeaz/sly",
     "devgoldyutils"
 ]
 

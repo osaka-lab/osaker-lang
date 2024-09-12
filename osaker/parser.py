@@ -2,134 +2,110 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, Any, Optional, Tuple
+    from typing import Dict, List, Iterable
 
-    from .typings import TokenT
+    from .token import Token
 
-from sly import Parser
+import random
 from pprint import pformat
-from devgoldyutils import Colours
+from devgoldyutils import LoggerAdapter, Colours
 
-from .lexer import OsakerLexer
 from .logger import osaker_logger
-from .exception import OsakerError
+from .exception import OsakerSyntaxError
 
 __all__ = (
     "OsakerParser"
 )
 
-class OsakerParser(Parser):
-    tokens = OsakerLexer.tokens
+logger = LoggerAdapter(osaker_logger, prefix = "Parser")
 
-    precedence = (
-        ("left", PLUS, MINUS),
-        ("left", TIMES, DIVIDE),
-        ("right", UMINUS),
-    )
-
-    types = {
+class OsakerParser():
+    types: Dict[str, type] = {
         "chiyo": int,
         "nyan": str
     }
 
     def __init__(self):
-        self._globals: Dict[str, Tuple[object, str]] = {}
+        self._globals: Dict[str, object] = {}
 
-    @_("NAME ASSIGN expr")
-    def statement(self, p):
-        print("uwu")
-        print(">>", p.type)
-        type_name, _type = p.type
+        self.__reverse_types: Dict[type, type] = dict(
+            (v, k) for k, v in self.types.items()
+        )
 
-        if not isinstance(p.expr, _type):
-            raise OsakerError(
-                f"The type '{type_name}' was defined but the expression '{p.expr}' is not of type '{type_name}'!"
+    def parse(self, tokens: List[Token]) -> None:
+        logger.debug(f"Tokens --> {pformat(tokens)}")
+
+        for index, token in enumerate(tokens):
+
+            if token.type == "OP_DEFINE":
+                self.__parse_define(tokens, index)
+
+        logger.debug(f"Globals --> {pformat(self._globals)}")
+
+    def __parse_define(self, tokens: List[Token], index: int):
+        tokens: Iterable[Token] = iter(tokens[1:])
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type == "NAME":
+            raise OsakerSyntaxError(
+                "A name must be given for the variable you are trying to define after ':o'. For example: ':o apple'."
             )
 
-        self._globals[p.NAME] = (p.expr, type_name)
+        variable_token = next_token
 
-    @_("TYPE_DEFINE NAME")
-    def type(self, p) -> Tuple[str, type]:
-        _type = self.types.get(p.NAME)
+        next_token = next(tokens, None)
 
-        if _type is None:
-            # TODO: This doesn't work so let's remove it I guess.
-            raise OsakerError(
-                f"The type definition '{p.NAME}' is invalid! Type should be one of: {self.types.values()}"
+        if next_token is None or not next_token.type == "ASSIGN":
+            raise OsakerSyntaxError(
+                "Assign, but assign what? A pipe bomb? You must " \
+                    "declare the value you would like to assign after '<--'."
             )
 
-        return (p.NAME, _type)
+        next_token = next(tokens, None)
 
-    @_("expr")
-    def statement(self, p):
-        print(p.expr)
-
-    @_("expr PLUS expr")
-    def expr(self, p):
-        return p.expr0 + p.expr1
-
-    @_("expr MINUS expr")
-    def expr(self, p):
-        return p.expr0 - p.expr1
-
-    @_("expr TIMES expr")
-    def expr(self, p):
-        return p.expr0 * p.expr1
-
-    @_("expr DIVIDE expr")
-    def expr(self, p):
-        return p.expr0 / p.expr1
-
-    @_("MINUS expr %prec UMINUS")
-    def expr(self, p):
-        return -p.expr
-
-    @_("LPAREN expr RPAREN")
-    def expr(self, p):
-        return p.expr
-
-    @_("LITERAL type")
-    def expr(self, p):
-        type_name, _type = p.type
-
-        if not isinstance(p.expr, _type):
-            raise OsakerError(
-                f"The type '{type_name}' was defined but the expression '{p.expr}' is not of type '{type_name}'!"
+        if next_token is None or not next_token.type == "LITERAL":
+            raise OsakerSyntaxError(
+                "Only literals can be assigned, so that means numbers or strings. To assign a string always " \
+                    "wrap it in speech marks ('\"') like this: ':o apple <-- \"I'm a apple!\"' ~nyan"
             )
 
-        return _type(p.LITERAL)
+        literal_token = next_token
 
-    @_("NAME")
-    def expr(self, p):
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type == "TYPE":
+            _type = self.__guess_literal_type(literal_token.value)
+            osaka_type = self.__reverse_types[_type]
+
+            hint_value = Colours.ORANGE.apply(f'"{literal_token.value}"')
+
+            if _type is int:
+                hint_value = Colours.BLUE.apply(literal_token.value)
+
+            hint_msg = f"Did you mean: {hint_value} ~ {Colours.CLAY.apply(osaka_type)}"
+
+            raise OsakerSyntaxError(
+                "The type of the literal must be defined! For example: '\"Hello, World!\" ~nyan'\n" 
+                    + self.__format_hint(hint_msg)
+            )
+
+        type_define_token = next_token
+
+        type_ = self.types[type_define_token.value]
+
+        self._globals[variable_token.value] = type_(literal_token.value)
+
+    def __guess_literal_type(self, literal: str) -> type:
+
         try:
-            value, type_name = self._globals[p.NAME]
-            return f"{Colours.BLUE}{p.NAME} {Colours.WHITE}~{Colours.ORANGE}{type_name}{Colours.RESET} == {pformat(value)}"
+            int(literal)
+            return int
+        except ValueError:
+            pass
 
-        except LookupError:
-            print(f"Undefined name {p.NAME!r}")
-            return 0
+        return str
 
-    @_("LITERAL")
-    def expr(self, p):
-        return p.LITERAL
+    def __format_hint(self, message: str) -> str:
+        face = random.choice(["(˶˃ ᵕ ˂˶) .ᐟ.ᐟ", "(˶ᵔ ᵕ ᵔ˶)"])
 
-    def error(self, token: Optional[TokenT]):
-
-        if token:
-            line_number: Optional[int] = getattr(token, "lineno", None)
-            character_index: Optional[int] = getattr(token, "index", None)
-
-            token_recognise_error = f"We recognise '{token.value}' as the token '{token.type}'. " \
-                "Is that correct? Check your syntax."
-
-            if line_number and character_index:
-                osaker_logger.error(
-                    f"Syntax error on line '{line_number}' at character index " \
-                        f"'{character_index}' ('{token.value}')! " + token_recognise_error
-                )
-
-            else:
-                osaker_logger.error(f"Syntax error! " + token_recognise_error)
-
-        else:
-            osaker_logger.critical("Parse error in input! EOF\n")
+        return f"\n   {Colours.PINK_GREY.apply(face)} {message}\n"
