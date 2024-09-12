@@ -97,7 +97,7 @@ class OsakerParser():
             literal_representation = Colours.ORANGE.apply(f'"{ayumu_object.value}"')
 
             if osaka_type == OsakaType.CHIYO:
-                literal_representation = Colours.BLUE.apply(ayumu_object.value)
+                literal_representation = Colours.BLUE.apply(str(ayumu_object.value))
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
