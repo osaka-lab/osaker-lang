@@ -10,9 +10,9 @@
 
 </div>
 
-```python
-:o name <-- kidnap("Enter your name: ")
-print("How are you '" + name + "'!")
+```rust
+:o name <-- "Osaka" ~nyan
+!print("How are you '" + name + "'!")
 ```
 
 <br>
