@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Generator, Type, Any
+    from typing import Dict, List, Generator, Any
 
     from .token import Token
 
@@ -98,6 +98,9 @@ class OsakerParser():
 
             if osaka_type == OsakaType.CHIYO:
                 literal_representation = Colours.BLUE.apply(str(ayumu_object.value))
+            
+            if osaka_type == OsakaType.TOMO:
+                literal_representation = Colours.CLAY.apply(str(ayumu_object.value))
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
@@ -132,9 +135,9 @@ class OsakerParser():
                     "declare the value you would like to assign after '<--'."
             )
 
-        if not next_token.type == "LITERAL":
+        if not next_token.type == "LITERAL" and not next_token.type == "NAME":
             raise OsakerSyntaxError(
-                "Only literals can be assigned, so that means numbers or strings. To assign a string always " \
+                "Only literals or name can be assigned, so that means numbers or strings. To assign a string always " \
                     "wrap it in speech marks ('\"') like this: \n':o apple <-- \"I'm a apple!\"' ~nyan"
             )
 
@@ -183,10 +186,21 @@ class OsakerParser():
         except (TypeError, ValueError):
             pass
 
+        try:
+            bool(literal)
+            return bool
+        except (TypeError, ValueError):
+            pass
+
         return str
 
     def __cast_correct_type_or_error(self, value: str, osaka_type: OsakaType) -> Any:
         _type = osaka_type.value
+
+        if value in ["yes", "yaa", "ya"]:
+            value = True
+        elif value in ["no", "nuh", "nuhuh"]:
+            value = False
 
         try:
             return _type(value)

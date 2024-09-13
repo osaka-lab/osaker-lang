@@ -9,6 +9,7 @@ __all__ = (
 class OsakaType(Enum):
     NYAN = str
     CHIYO = int
+    TOMO = bool
 
     @classmethod
     def from_python_type(cls, py_type: type) -> OsakaType:
