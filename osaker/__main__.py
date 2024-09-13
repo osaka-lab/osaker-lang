@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    ...
+    from typing import List
 
 import typer
 import logging
@@ -35,11 +35,19 @@ def execute_code(
     if debug:
         osaker_logger.setLevel(logging.DEBUG)
 
-    if file is not None:
-        raise typer.Exit() # TODO: Run code inside script file.
-
     lexer = OsakerLexer()
     parser = OsakerParser()
+
+    if file is not None:
+        file_content = open(file, "r").read().splitlines()
+
+        interpret_code_and_handle_exceptions(
+            lexer = lexer,
+            parser = parser,
+            text = file_content
+        )
+
+        raise typer.Exit()
 
     if command_input is not None:
         interpret_code_and_handle_exceptions(
@@ -66,10 +74,13 @@ def execute_code(
 def interpret_code_and_handle_exceptions(
     lexer: OsakerLexer,
     parser: OsakerParser,
-    text: str
+    text: List[str] | str
 ) -> None:
     try:
-        parser.parse(lexer.tokenize(text))
+        lines = text if isinstance(text, list) else [text]
+    
+        for line in lines:
+            parser.parse(lexer.tokenize(line))
 
     except OsakerParseError as e:
         osaker_logger.critical(
