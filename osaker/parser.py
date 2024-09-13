@@ -94,13 +94,16 @@ class OsakerParser():
 
             osaka_type = ayumu_object.type
 
-            literal_representation = Colours.ORANGE.apply(f'"{ayumu_object.value}"')
+            literal_representation = str(ayumu_object.value)
+
+            if osaka_type == OsakaType.NYAN:
+                literal_representation = Colours.ORANGE.apply(f'"{ayumu_object.value}"')
 
             if osaka_type == OsakaType.CHIYO:
-                literal_representation = Colours.BLUE.apply(str(ayumu_object.value))
-            
-            if osaka_type == OsakaType.TOMO:
                 literal_representation = Colours.CLAY.apply(str(ayumu_object.value))
+
+            if osaka_type == OsakaType.TOMO:
+                literal_representation = Colours.BLUE.apply(str(ayumu_object.value).lower())
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
@@ -135,10 +138,13 @@ class OsakerParser():
                     "declare the value you would like to assign after '<--'."
             )
 
-        if not next_token.type == "LITERAL" and not next_token.type == "NAME":
+        if not next_token.type.startswith("LITERAL"):
+            hint_msg = "To assign a string always " \
+                "wrap it in speech marks ('\"') like this: \n':o apple <-- \"I'm a apple!\" ~nyan'"
+
             raise OsakerSyntaxError(
-                "Only literals or name can be assigned, so that means numbers or strings. To assign a string always " \
-                    "wrap it in speech marks ('\"') like this: \n':o apple <-- \"I'm a apple!\"' ~nyan"
+                "Only literals or name can be assigned, so that means numbers or strings."
+                    + self.__format_hint(hint_msg)
             )
 
         literal_token = next_token

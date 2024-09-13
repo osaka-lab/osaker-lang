@@ -22,10 +22,12 @@ class OsakerLexer():
         "OP_DEFINE": r":[oO]",
         "OP_INSPECT": ":<",
 
+        "LITERAL_NUMBER": r"-?\b\d+\b",
+        "LITERAL_STRING": r"(['\"])(?:\\.|[^\\])*?\1",
+        "LITERAL_BOOL": r"\b(?:yes|yaa|ya|no|nuh|nuhuh)\b",
+
         "NAME": r"[!a-zA-Z_][a-zA-Z0-9_]*",
         "ASSIGN": "<--",
-
-        "LITERAL": r"(?<!<)-?\b\d+\b|(['\"])(?:\\.|[^\\])*?\1",
 
         "TYPE": r"[~-][a-zA-Z0-9_]+", # characters starting with either "-" or "~"
 
@@ -82,7 +84,7 @@ class OsakerLexer():
 
         if token_type == "TYPE":
             value = token_value.replace("~", "").replace("-", "")
-        elif token_type == "LITERAL":
+        elif token_type == "LITERAL_STRING":
             value = token_value.replace('"', "").replace("'", "")
         else:
             value = token_value
