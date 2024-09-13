@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Generator, Any
+    from typing import Dict, List, Generator, Any, Type
 
     from .token import Token
 
@@ -10,10 +10,12 @@ import random
 from pprint import pformat
 from devgoldyutils import LoggerAdapter, Colours, short_str
 
+import re
+from .lexer import OsakerLexer
 from .logger import osaker_logger
 from .osaka_type import OsakaType
 from .ayumu_object import AyumuObject
-from .errors import OsakerSyntaxError, OsakerError, OsakerIncorrectTypeError
+from .errors import OsakerSyntaxError, OsakerError, OsakerIncorrectTypeError, OsakerParseError
 
 __all__ = (
     "OsakerParser"
@@ -139,12 +141,12 @@ class OsakerParser():
             )
 
         if not next_token.type.startswith("LITERAL"):
-            hint_msg = "To assign a string always " \
-                "wrap it in speech marks ('\"') like this: \n':o apple <-- \"I'm a apple!\" ~nyan'"
+            hint_msg = "Example: :o hello_text <-- \"Hewwo World!\" ~nyan"
 
             raise OsakerSyntaxError(
-                "Only literals or name can be assigned, so that means numbers or strings."
-                    + self.__format_hint(hint_msg)
+                "Only literals can be assigned, so that means numbers, strings or booleans. " \
+                    "To assign a string always wrap it in speech marks ('\"').\n"
+                        + self.__format_hint(hint_msg)
             )
 
         literal_token = next_token
@@ -155,64 +157,73 @@ class OsakerParser():
         tokens = tokens_after_operator
 
         next_token = next(tokens, None)
+        literal_token_type = self.__guess_literal_type(literal_token.value)
 
-        if next_token is None or not next_token.type == "TYPE":
-            _type = self.__guess_literal_type(literal_token.value)
-            osaka_type = OsakaType.from_python_type(_type)
+        osaka_type = OsakaType.from_python_type(literal_token_type)
 
+        hint_value = literal_token.value
+
+        if osaka_type == OsakaType.NYAN:
             hint_value = Colours.ORANGE.apply(f'"{literal_token.value}"')
 
-            if _type is int:
-                hint_value = Colours.BLUE.apply(literal_token.value)
+        elif osaka_type == OsakaType.CHIYO:
+            hint_value = Colours.CLAY.apply(literal_token.value)
 
-            hint_msg = f"Did you mean: {hint_value} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
+        elif osaka_type == OsakaType.TOMO:
+            hint_value = Colours.BLUE.apply(literal_token.value)
 
+        hint_msg = f"Did you mean: {hint_value} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
+
+        if next_token is None or not next_token.type == "TYPE":
             raise OsakerSyntaxError(
                 "The type of the literal must be defined! For example: '\"Hello, World!\" ~nyan'\n" 
                     + self.__format_hint(hint_msg)
             )
 
-        type_define_token = next_token
+        type_token = next_token
 
         try:
-            osaka_type = OsakaType.from_osaka_type_string(type_define_token.value)
+            osaka_type = OsakaType.from_osaka_type_string(type_token.value)
 
         except ValueError as e:
             raise OsakerSyntaxError(
-                f"Uhhhh, that type ('{type_define_token.value}') doesn't exist bro! Error: {e}"
+                f"Uhhhh, that type ('{type_token.value}') doesn't exist bro! Error: {e}"
+            )
+
+        if literal_token_type is not osaka_type.value:
+            raise OsakerIncorrectTypeError(
+                "Incorrect type was defined! The value " \
+                    f"'{literal_token.value}' is not of type '{osaka_type.name}'!\n"
+                        + self.__format_hint(hint_msg)
             )
 
         return osaka_type
 
-    def __guess_literal_type(self, literal: str) -> type:
+    def __guess_literal_type(self, literal: str) -> Type[type]:
 
-        try:
-            int(literal)
+        if re.match(OsakerLexer.tokens["LITERAL_NUMBER"], literal):
             return int
-        except (TypeError, ValueError):
-            pass
 
-        try:
-            bool(literal)
+        elif re.match(OsakerLexer.tokens["LITERAL_BOOL"], literal):
             return bool
-        except (TypeError, ValueError):
-            pass
 
         return str
 
     def __cast_correct_type_or_error(self, value: str, osaka_type: OsakaType) -> Any:
         _type = osaka_type.value
 
-        if value in ["yes", "yaa", "ya"]:
-            value = True
-        elif value in ["no", "nuh", "nuhuh"]:
-            value = False
+        if osaka_type == OsakaType.TOMO:
+
+            if value in ["yes", "yaa", "ya"]:
+                value = True
+            elif value in ["no", "nuh", "nuhuh"]:
+                value = False
 
         try:
             return _type(value)
         except ValueError as e:
-            raise OsakerIncorrectTypeError(
-                f"An incorrect osaka type was cast! The type '{osaka_type.name}' " \
+            raise OsakerParseError(
+                f"Oh oh that wasn't supposed to happen. An incorrect osaka type was cast! The type '{osaka_type.name}' " \
                     f"cannot cast upon the value '{short_str(value)}'! \nError: {e}"
             )
 
