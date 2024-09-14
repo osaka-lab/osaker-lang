@@ -21,6 +21,7 @@ class OsakerLexer():
         "OP_DELETE": ":3",
         "OP_DEFINE": r":[oO]",
         "OP_INSPECT": ":<",
+        "OP_MATH": r":[mM]",
 
         "LITERAL_NUMBER": r"-?\b\d+\b",
         "LITERAL_STRING": r"(['\"])(?:\\.|[^\\])*?\1",

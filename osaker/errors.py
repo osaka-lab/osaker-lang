@@ -1,7 +1,10 @@
 __all__  = (
     "OsakerError",
     "OsakerParseError",
-    "OsakerSyntaxError"
+    "OsakerSyntaxError",
+    "OsakerIncorrectTypeError",
+    "OsakerNameError",
+    "OsakerTypeError",
 )
 
 class OsakerError(Exception):
@@ -15,4 +18,10 @@ class OsakerSyntaxError(OsakerError):
     ...
 
 class OsakerIncorrectTypeError(OsakerError):
+    ...
+
+class OsakerNameError(OsakerError):
+    ...
+
+class OsakerTypeError(OsakerError):
     ...

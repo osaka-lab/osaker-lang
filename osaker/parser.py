@@ -4,18 +4,24 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Dict, List, Generator, Any, Type
 
-    from .token import Token
-
 import random
 from pprint import pformat
 from devgoldyutils import LoggerAdapter, Colours, short_str
 
 import re
+from .token import Token
 from .lexer import OsakerLexer
 from .logger import osaker_logger
 from .osaka_type import OsakaType
 from .ayumu_object import AyumuObject
-from .errors import OsakerSyntaxError, OsakerError, OsakerIncorrectTypeError, OsakerParseError
+from .errors import (
+    OsakerSyntaxError, 
+    OsakerError, 
+    OsakerIncorrectTypeError, 
+    OsakerParseError, 
+    OsakerNameError,
+    OsakerTypeError
+)
 
 __all__ = (
     "OsakerParser"
@@ -52,7 +58,7 @@ class OsakerParser():
                 "you are trying to define after ':o'. \nFor example: ':o apple'."
         )
 
-        literal_token = self.__parse_assign_literal(tokens, variable_token)
+        literal_token = self.__parse_assign_value(tokens, variable_token)
 
         osaka_type = self.__parse_type(tokens, literal_token)
 
@@ -119,7 +125,7 @@ class OsakerParser():
 
         return next_token
 
-    def __parse_assign_literal(self, tokens_after_operator: Generator[Token], variable_token: Token) -> Token:
+    def __parse_assign_value(self, tokens_after_operator: Generator[Token], variable_token: Token) -> Token:
         tokens = tokens_after_operator
 
         next_token = next(tokens, None)
@@ -140,16 +146,25 @@ class OsakerParser():
                     "declare the value you would like to assign after '<--'."
             )
 
-        if not next_token.type.startswith("LITERAL"):
-            hint_msg = "Example: :o hello_text <-- \"Hewwo World!\" ~nyan"
+        if not next_token.type.startswith("LITERAL") and not next_token.type == "OP_MATH":
+            hint_msg = """Example: ':o hello_text <-- \"Hewwo World!\" ~nyan' or ':o answer <-- :m 1 + 1 ~chiyo' """
 
             raise OsakerSyntaxError(
-                "Only literals can be assigned, so that means numbers, strings or booleans. " \
+                "Only literals (numbers, strings or booleans) and math operations (:m 1 + 1) can be assigned! " \
                     "To assign a string always wrap it in speech marks ('\"').\n"
                         + self.__format_hint(hint_msg)
             )
 
-        literal_token = next_token
+        if next_token.type == "OP_MATH":
+            answer = self.__parse_math(tokens)
+
+            literal_token = Token(
+                type = OsakaType.CHIYO, 
+                value = str(answer)
+            )
+
+        else:
+            literal_token = next_token
 
         return literal_token
 
@@ -198,6 +213,102 @@ class OsakerParser():
             )
 
         return osaka_type
+
+    def __parse_math(self, tokens_after_operator: Generator[Token]) -> int:
+        tokens = tokens_after_operator
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type in ["LITERAL_NUMBER", "NAME"]:
+            raise OsakerSyntaxError(
+                "After the math operator (':m') should follow a math expression containing ~chiyo types. \n" 
+                + self.__format_hint("Example: :o answer <-- :m 1 + 1 ~chiyo")
+            )
+
+        # TODO: put this into a function so I don't have to repeat this shit. I'm too sleepy for this shit...
+        name_or_number_token = next_token
+
+        if name_or_number_token.type == "NAME":
+            name_token = name_or_number_token
+            ayumu_object = self.__get_ayumu_object_or_error(name_or_number_token)
+
+            if not ayumu_object.type == OsakaType.CHIYO:
+                raise OsakerTypeError(
+                    f"The ayumu object '{name_token.value}' " \
+                        "given for math is not of ~chiyo type!"
+                )
+
+            left_number_value = ayumu_object.value
+
+        else:
+            left_number_value = name_or_number_token.value
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type in ["PLUS", "MINUS", "TIMES", "DIVIDE"]:
+            raise OsakerSyntaxError(
+                "Do you not know how to do math, huh? Where the FUCK is your operator, HUH?!?! " \
+                    f"\nAn actual math operator (e.g. +, -, *, /) must be given after the literal ~chiyo '{left_number_literal.value}'. \n" 
+                        + self.__format_hint("Like this: :m 1 + 1 ~chiyo")
+            )
+
+        actual_math_operator = next_token
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type in ["LITERAL_NUMBER", "NAME"]:
+            raise OsakerSyntaxError(
+                "Bro! Are you mad? After the actual math operator (e.g. +, -, *, /) " \
+                    "should follow another ~chiyo type. How dumb can you be?! Fucking hell man! " \
+                        "I ain't helping you this time."
+            )
+
+        name_or_number_token = next_token
+
+        if name_or_number_token.type == "NAME":
+            name_token = name_or_number_token
+            ayumu_object = self.__get_ayumu_object_or_error(name_or_number_token)
+
+            if not ayumu_object.type == OsakaType.CHIYO:
+                raise OsakerTypeError(
+                    f"The ayumu object '{name_token.value}' " \
+                        "given for math is not of ~chiyo type!"
+                )
+
+            right_number_value = ayumu_object.value
+
+        else:
+            right_number_value = name_or_number_token.value
+
+        left_number_cast_value: int = self.__cast_correct_type_or_error(left_number_value, OsakaType.CHIYO)
+        right_number_cast_value: int = self.__cast_correct_type_or_error(right_number_value, OsakaType.CHIYO)
+
+        if actual_math_operator.type == "PLUS":
+            return left_number_cast_value + right_number_cast_value
+
+        elif actual_math_operator.type == "MINUS":
+            return left_number_cast_value - right_number_cast_value
+
+        elif actual_math_operator.type == "TIMES":
+            return left_number_cast_value * right_number_cast_value
+
+        elif actual_math_operator.type == "DIVIDE":
+            return left_number_cast_value / right_number_cast_value
+
+        raise OsakerParseError(
+            "Wait what, that math operator doesn't exist but it does exist? WHAT!"
+        )
+
+    def __get_ayumu_object_or_error(self, name_token: Token) -> AyumuObject:
+        ayumu_object = self._globals.get(name_token.value)
+
+        if ayumu_object is None:
+            raise OsakerNameError(
+                "An ayumu object (e.g. variable, function) " \
+                    f"doesn't exist with the name '{name_token.value}'!"
+            )
+
+        return ayumu_object
 
     def __guess_literal_type(self, literal: str) -> Type[type]:
 
