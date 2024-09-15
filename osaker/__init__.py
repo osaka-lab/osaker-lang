@@ -2,4 +2,4 @@
 Library for Osaker programming language.
 """
 
-__version__ = "1.0.0dev1"
+__version__ = "1.0.0dev2"

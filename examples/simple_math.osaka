@@ -4,3 +4,7 @@
 :o answer <-- :m number_x * number_y ~chiyo
 
 :< answer
+
+:o answer_2 <-- :m 80 * 300 ~chiyo
+
+:< answer_2
