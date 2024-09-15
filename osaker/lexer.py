@@ -62,7 +62,7 @@ class OsakerLexer():
                 match = None
 
                 for token_type in self.tokens_compiled:
-                    match = self.tokens_compiled[token_type].match(string, position)
+                    match = self.tokens_compiled[token_type].match(line, position)
 
                     if match:
                         token_value = match.group(0)
