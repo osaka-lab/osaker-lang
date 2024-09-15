@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Generator, Any, Type
+    from typing import Dict, List, Generator, Any, Type, Iterable, Tuple
 
 import random
 from pprint import pformat
@@ -49,8 +49,8 @@ class OsakerParser():
 
         logger.debug(f"Globals --> {pformat(self._globals)}")
 
-    def __parse_define(self, tokens: List[Token], index: int):
-        tokens: Generator[Token] = iter(tokens[index + 1:])
+    def __parse_define(self, all_tokens: List[Token], index: int):
+        tokens: Generator[Token] = iter(all_tokens[index + 1:])
 
         variable_token = self.__parse_name(
             tokens_after_operator = tokens,
@@ -58,11 +58,22 @@ class OsakerParser():
                 "you are trying to define after ':o'. \nFor example: ':o apple'."
         )
 
-        literal_token = self.__parse_assign_value(tokens, variable_token)
+        next_token = next(tokens, None)
 
-        osaka_type = self.__parse_type(tokens, literal_token)
+        if next_token is None or not next_token.type == "ASSIGN":
+            hint_msg = f'Example: :o {variable_token.value} <-- "Hello World!" ~nyan'
 
-        value = self.__cast_correct_type_or_error(literal_token.value, osaka_type)
+            raise OsakerSyntaxError(
+                "You can't just define an Ayumu object; you must assign something to it.\n"
+                    + self.__format_hint(hint_msg)
+            )
+
+        value, osaka_type = self.__parse_literal_or_name(
+            tokens_after_operator = tokens,
+            all_tokens = all_tokens,
+            token_no_exist_error_message = "Assign, but assign what? A pipe bomb? You must " \
+                "declare the value you would like to assign after '<--'."
+        )
 
         ayumu_object = AyumuObject(
             type = osaka_type,
@@ -105,13 +116,13 @@ class OsakerParser():
             literal_representation = str(ayumu_object.value)
 
             if osaka_type == OsakaType.NYAN:
-                literal_representation = Colours.ORANGE.apply(f'"{ayumu_object.value}"')
+                literal_representation = Colours.ORANGE.apply(f'"{literal_representation}"')
 
             if osaka_type == OsakaType.CHIYO:
-                literal_representation = Colours.CLAY.apply(str(ayumu_object.value))
+                literal_representation = Colours.CLAY.apply(literal_representation)
 
             if osaka_type == OsakaType.TOMO:
-                literal_representation = Colours.BLUE.apply(str(ayumu_object.value).lower())
+                literal_representation = Colours.BLUE.apply(literal_representation.lower())
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
@@ -125,175 +136,148 @@ class OsakerParser():
 
         return next_token
 
-    def __parse_assign_value(self, tokens_after_operator: Generator[Token], variable_token: Token) -> Token:
+    def __parse_literal_or_name(
+        self, 
+        tokens_after_operator: Generator[Token], 
+        all_tokens: List[Token], 
+        token_no_exist_error_message: str,
+        ignore_type: bool = False
+    ) -> Tuple[Any, OsakaType]:
         tokens = tokens_after_operator
-
-        next_token = next(tokens, None)
-
-        if next_token is None or not next_token.type == "ASSIGN":
-            hint_msg = f'Example: :o {variable_token.value} <-- "Hello World!" ~nyan'
-
-            raise OsakerSyntaxError(
-                "You can't just define an Ayumu object; you must assign something to it.\n"
-                    + self.__format_hint(hint_msg)
-            )
 
         next_token = next(tokens, None)
 
         if next_token is None:
-            raise OsakerSyntaxError(
-                "Assign, but assign what? A pipe bomb? You must " \
-                    "declare the value you would like to assign after '<--'."
-            )
+            raise OsakerSyntaxError(token_no_exist_error_message)
 
-        if not next_token.type.startswith("LITERAL") and not next_token.type == "OP_MATH":
-            hint_msg = """Example: ':o hello_text <-- \"Hewwo World!\" ~nyan' or ':o answer <-- :m 1 + 1 ~chiyo' """
-
+        if not next_token.type.startswith("LITERAL") and next_token.type not in ["NAME", "OP_MATH"]:
             raise OsakerSyntaxError(
-                "Only literals (numbers, strings or booleans) and math operations (:m 1 + 1) can be assigned! " \
-                    "To assign a string always wrap it in speech marks ('\"').\n"
-                        + self.__format_hint(hint_msg)
+                "Expected either a literal (numbers, strings or booleans), a math operation (:m 1 + 1) or a variable " \
+                    f"but instead we got a '{next_token.type}' token. Only literals, math operations and variables can be used.\n" \
+                        + self.__format_hint("Example #1: \":o hello_text <-- \"Hewwo World!\" ~nyan\"")
+                        + self.__format_hint("Example #2: \":o answer <-- :m 1 + 1 ~chiyo\"")
+                        + self.__format_hint("Example #3: \":o age <-- number_x ~chiyo\"")
             )
 
         if next_token.type == "OP_MATH":
-            answer = self.__parse_math(tokens)
+            evaluated_answer = self.__parse_math(tokens, all_tokens)
 
-            literal_token = Token(
-                type = OsakaType.CHIYO, 
-                value = str(answer)
-            )
+            return evaluated_answer, OsakaType.CHIYO
 
-        else:
-            literal_token = next_token
+        elif next_token.type == "NAME":
+            ayumu_object = self.__get_ayumu_object_or_error(next_token)
 
-        return literal_token
+            return ayumu_object.value, ayumu_object.type
 
-    def __parse_type(self, tokens_after_operator: Generator[Token], literal_token: Token) -> OsakaType:
-        tokens = tokens_after_operator
+        literal_token = next_token
+        literal_token_osaka_type = OsakaType.from_python_type(self.__guess_literal_type(literal_token.value))
 
-        next_token = next(tokens, None)
-        literal_token_type = self.__guess_literal_type(literal_token.value)
+        hint_representation = self.__tokens_to_string_representation(all_tokens, literal_token)
+        hint_msg = f"Did you mean: {hint_representation} " \
+            f"~{Colours.CLAY.apply(literal_token_osaka_type.name.lower())}"
 
-        osaka_type = OsakaType.from_python_type(literal_token_type)
+        value = self.__clean_token_value(literal_token.type, literal_token.value)
 
-        hint_value = literal_token.value
+        if not ignore_type:
+            next_token = next(tokens, None)
 
-        if osaka_type == OsakaType.NYAN:
-            hint_value = Colours.ORANGE.apply(f'"{literal_token.value}"')
+            if next_token is None or not next_token.type == "TYPE":
+                error_msg = "The type of the literal must be defined!\n"
 
-        elif osaka_type == OsakaType.CHIYO:
-            hint_value = Colours.CLAY.apply(literal_token.value)
+                if literal_token.type == "NAME":
+                    error_msg = "You must specify the type you expect to come out of that variable!\n"
 
-        elif osaka_type == OsakaType.TOMO:
-            hint_value = Colours.BLUE.apply(literal_token.value)
-
-        hint_msg = f"Did you mean: {hint_value} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
-
-        if next_token is None or not next_token.type == "TYPE":
-            raise OsakerSyntaxError(
-                "The type of the literal must be defined! For example: '\"Hello, World!\" ~nyan'\n" 
-                    + self.__format_hint(hint_msg)
-            )
-
-        type_token = next_token
-
-        try:
-            osaka_type = OsakaType.from_osaka_type_string(type_token.value)
-
-        except ValueError as e:
-            raise OsakerSyntaxError(
-                f"Uhhhh, that type ('{type_token.value}') doesn't exist bro! Error: {e}"
-            )
-
-        if literal_token_type is not osaka_type.value:
-            raise OsakerIncorrectTypeError(
-                "Incorrect type was defined! The value " \
-                    f"'{literal_token.value}' is not of type '{osaka_type.name}'!\n"
-                        + self.__format_hint(hint_msg)
-            )
-
-        return osaka_type
-
-    def __parse_math(self, tokens_after_operator: Generator[Token]) -> int:
-        tokens = tokens_after_operator
-
-        next_token = next(tokens, None)
-
-        if next_token is None or not next_token.type in ["LITERAL_NUMBER", "NAME"]:
-            raise OsakerSyntaxError(
-                "After the math operator (':m') should follow a math expression containing ~chiyo types. \n" 
-                + self.__format_hint("Example: :o answer <-- :m 1 + 1 ~chiyo")
-            )
-
-        # TODO: put this into a function so I don't have to repeat this shit. I'm too sleepy for this shit...
-        name_or_number_token = next_token
-
-        if name_or_number_token.type == "NAME":
-            name_token = name_or_number_token
-            ayumu_object = self.__get_ayumu_object_or_error(name_or_number_token)
-
-            if not ayumu_object.type == OsakaType.CHIYO:
-                raise OsakerTypeError(
-                    f"The ayumu object '{name_token.value}' " \
-                        "given for math is not of ~chiyo type!"
+                raise OsakerSyntaxError(
+                    error_msg + self.__format_hint(hint_msg)
                 )
 
-            left_number_value = ayumu_object.value
+            type_token = next_token
+            type_token_clean_value = self.__clean_token_value(type_token.type, type_token.value)
+
+            try:
+                osaka_type = OsakaType.from_osaka_type_string(type_token_clean_value)
+
+            except ValueError as e:
+                raise OsakerSyntaxError(
+                    f"Uhhhh, that type ('{type_token_clean_value}') doesn't exist lil bro! Error: {e}"
+                )
+
+            if not literal_token_osaka_type == osaka_type:
+                raise OsakerIncorrectTypeError(
+                    "Incorrect type was defined! The value " \
+                        f"'{short_str(str(value))}' is not of type '{osaka_type.name}'!\n"
+                            + self.__format_hint(hint_msg)
+                )
 
         else:
-            left_number_value = name_or_number_token.value
+            osaka_type = literal_token_osaka_type
+
+        value = self.__cast_correct_type_or_error(value, osaka_type)
+
+        return value, osaka_type
+
+    def __parse_math(self, tokens_after_operator: Generator[Token], all_tokens: Iterable[Token]) -> int:
+        tokens = tokens_after_operator
+
+        left_number_value, left_number_osaka_type = self.__parse_literal_or_name(
+            tokens,
+            all_tokens,
+            token_no_exist_error_message = "After the math operator (':m') should follow a " \
+                "math expression containing ~chiyo types. \n" + self.__format_hint("Example: :o answer <-- :m 1 + 1 ~chiyo"),
+            ignore_type = True
+        )
+
+        if not left_number_osaka_type == OsakaType.CHIYO:
+            raise OsakerTypeError(
+                f"The ayumu object or literal '{short_str(str(left_number_value))}' " \
+                    "given for math is not of ~chiyo type!"
+            )
 
         next_token = next(tokens, None)
 
-        if next_token is None or not next_token.type in ["PLUS", "MINUS", "TIMES", "DIVIDE"]:
+        if next_token is None or next_token.type not in ["PLUS", "MINUS", "TIMES", "DIVIDE"]:
             raise OsakerSyntaxError(
                 "Do you not know how to do math, huh? Where the FUCK is your operator, HUH?!?! " \
-                    f"\nAn actual math operator (e.g. +, -, *, /) must be given after the literal ~chiyo '{left_number_literal.value}'. \n" 
-                        + self.__format_hint("Like this: :m 1 + 1 ~chiyo")
+                    f"\nAn actual math operator (e.g. +, -, *, /) must be given after the literal ~chiyo '{left_number_value}'! \n" 
+                        + self.__format_hint("Like this mf: :m 1 + 1 ~chiyo")
             )
 
         actual_math_operator = next_token
 
-        next_token = next(tokens, None)
+        right_number_value, right_number_osaka_type = self.__parse_literal_or_name(
+            tokens,
+            all_tokens,
+            token_no_exist_error_message = "Bro! Are you mad? After the actual math operator (e.g. +, -, *, /) " \
+                "should follow another ~chiyo type. How dumb can you be?! Fucking hell man! " \
+                    "I ain't helping you this time.",
+            ignore_type = True
+        )
 
-        if next_token is None or not next_token.type in ["LITERAL_NUMBER", "NAME"]:
-            raise OsakerSyntaxError(
-                "Bro! Are you mad? After the actual math operator (e.g. +, -, *, /) " \
-                    "should follow another ~chiyo type. How dumb can you be?! Fucking hell man! " \
-                        "I ain't helping you this time."
+        if not right_number_osaka_type == OsakaType.CHIYO:
+            raise OsakerTypeError(
+                f"The ayumu object or literal '{short_str(str(right_number_value))}' " \
+                    "given for math is not of ~chiyo type!"
             )
 
-        name_or_number_token = next_token
+        next_token = next(tokens, None)
 
-        if name_or_number_token.type == "NAME":
-            name_token = name_or_number_token
-            ayumu_object = self.__get_ayumu_object_or_error(name_or_number_token)
-
-            if not ayumu_object.type == OsakaType.CHIYO:
-                raise OsakerTypeError(
-                    f"The ayumu object '{name_token.value}' " \
-                        "given for math is not of ~chiyo type!"
-                )
-
-            right_number_value = ayumu_object.value
-
-        else:
-            right_number_value = name_or_number_token.value
-
-        left_number_cast_value: int = self.__cast_correct_type_or_error(left_number_value, OsakaType.CHIYO)
-        right_number_cast_value: int = self.__cast_correct_type_or_error(right_number_value, OsakaType.CHIYO)
+        if next_token is None or not next_token.type == "TYPE":
+            raise OsakerSyntaxError(
+                "You still need to define a type here!\n" 
+                    + self.__format_hint("Example: 123 ~chiyo")
+            )
 
         if actual_math_operator.type == "PLUS":
-            return left_number_cast_value + right_number_cast_value
+            return left_number_value + right_number_value
 
         elif actual_math_operator.type == "MINUS":
-            return left_number_cast_value - right_number_cast_value
+            return left_number_value - right_number_value
 
         elif actual_math_operator.type == "TIMES":
-            return left_number_cast_value * right_number_cast_value
+            return left_number_value * right_number_value
 
         elif actual_math_operator.type == "DIVIDE":
-            return left_number_cast_value / right_number_cast_value
+            return left_number_value / right_number_value
 
         raise OsakerParseError(
             "Wait what, that math operator doesn't exist but it does exist? WHAT!"
@@ -309,6 +293,20 @@ class OsakerParser():
             )
 
         return ayumu_object
+
+    def __tokens_to_string_representation(self, tokens: Iterable[Token], token_to_stop_at: Token) -> str:
+        resp_string_list = []
+
+        for token in tokens:
+
+            # we pray this fucking works.
+            if token.id == token_to_stop_at.id:
+                resp_string_list.append(token.value)
+                break
+
+            resp_string_list.append(token.value)
+
+        return " ".join(resp_string_list)
 
     def __guess_literal_type(self, literal: str) -> Type[type]:
 
@@ -330,6 +328,8 @@ class OsakerParser():
             elif value in ["no", "nuh", "nuhuh"]:
                 value = False
 
+        value = self.__clean_token_value(osaka_type, value)
+
         try:
             return _type(value)
         except ValueError as e:
@@ -337,6 +337,20 @@ class OsakerParser():
                 f"Oh oh that wasn't supposed to happen. An incorrect osaka type was cast! The type '{osaka_type.name}' " \
                     f"cannot cast upon the value '{short_str(value)}'! \nError: {e}"
             )
+
+    def __clean_token_value(
+        self,
+        token_type: str,
+        token_value: str
+    ) -> str:
+        value = token_value
+
+        if token_type == "TYPE":
+            value = value.replace("~", "").replace("-", "")
+        elif token_type == "LITERAL_STRING":
+            value = value.replace('"', "").replace("'", "")
+
+        return value
 
     def __format_hint(self, message: str) -> str:
         face = random.choice(["(˶˃ ᵕ ˂˶) .ᐟ.ᐟ", "(˶ᵔ ᵕ ᵔ˶)"])

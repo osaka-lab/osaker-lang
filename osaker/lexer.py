@@ -51,43 +51,31 @@ class OsakerLexer():
 
         position = 0
 
-        for char in string:
+        for line_number, line in enumerate(string.splitlines()):
 
-            if char in self.ignore:
-                position += 1
-                continue
+            for char in line:
 
-            match = None
+                if char in self.ignore:
+                    position += 1
+                    continue
 
-            for token_type in self.tokens_compiled:
-                match = self.tokens_compiled[token_type].match(string, position)
+                match = None
 
-                if match:
-                    token_value = match.group(0)
-                    tokens.append(
-                        Token(
-                            type = token_type,
-                            value = self.__manipulate_token_value(token_type, token_value)
+                for token_type in self.tokens_compiled:
+                    match = self.tokens_compiled[token_type].match(string, position)
+
+                    if match:
+                        token_value = match.group(0)
+                        tokens.append(
+                            Token(
+                                type = token_type,
+                                value = token_value,
+                                line_number = line_number,
+                                character_number = position
+                            )
                         )
-                    )
 
-                    position = match.end()
-                    break
+                        position = match.end()
+                        break
 
         return tokens
-
-    def __manipulate_token_value(
-        self, 
-        token_type: str, 
-        token_value: str
-    ) -> str:
-        value = None
-
-        if token_type == "TYPE":
-            value = token_value.replace("~", "").replace("-", "")
-        elif token_type == "LITERAL_STRING":
-            value = token_value.replace('"', "").replace("'", "")
-        else:
-            value = token_value
-
-        return value
