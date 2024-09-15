@@ -47,6 +47,9 @@ class OsakerParser():
             elif token.type == "OP_INSPECT":
                 self.__parse_inspect(tokens, index)
 
+            elif token.type == "OP_IMPORT":
+                self.__parse_import(tokens, index)
+
         logger.debug(f"Globals --> {pformat(self._globals)}")
 
     def __parse_define(self, all_tokens: List[Token], index: int):
@@ -80,7 +83,6 @@ class OsakerParser():
             value = value
         )
 
-        # TODO: Catch the type error.
         self._globals[variable_token.value] = ayumu_object
 
     def __parse_delete(self, tokens: List[Token], index: int):
@@ -130,6 +132,27 @@ class OsakerParser():
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
             )
+
+    def __parse_import(self, tokens: List[Token], index: int):
+        tokens: Generator[Token] = iter(tokens[index + 1:])
+
+        name_token = self.__parse_name(
+            tokens_after_operator = tokens,
+            error_message = "A name must be given for the namespace this osaka modules should be imported as! \n" \
+                "'my_module' is the namespace in the example below: \n"
+                    + self.__format_hint("Example: :+ my_module <-- \"./my_module.osaka\" ~osaka")
+        )
+
+        # TODO: Parse (get) the module namespace, the assign arrow, then the literal following it. 
+        # That literal (~osaka) should be cast into pathlib.Path object and should be checked if it exists.
+        # Then we get the contents of that osaka module / script and initialise another OsakerParser and Lexer in this 
+        # function to use to parse the tokens in that osaka module. Once parsed, we take the globals from that OsakerParser and add them
+        # to the globals of our main OsakerParser (self._globals) but we append each one with "my_module!" in front of their current key.
+        # 
+        # Step 1: Parse module namespace, assign arrow and literal.
+        # Step 2: Turn the literal into a pathlib.Path object and check if it exists.
+        # Step 3: Get contents of the osaka module, init another OsakerParser and parse the tokens.
+        # Step 4: Add the globals from the module's OsakerParser to our main one (self._globals).
 
     def __parse_name(self, tokens_after_operator: Generator[Token], error_message: str) -> Token:
         next_token = next(tokens_after_operator, None)
