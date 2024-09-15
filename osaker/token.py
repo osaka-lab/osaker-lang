@@ -10,3 +10,9 @@ __all__ = (
 class Token():
     type: str
     value: str
+    line_number: int
+    character_number: int
+
+    @property
+    def id(self) -> str:
+        return f"{self.line_number}{self.type}{self.character_number}"
