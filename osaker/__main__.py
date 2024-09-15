@@ -83,7 +83,7 @@ def execute_code(
             continue
 
         if text == "exit":
-            raise typer.Exit(0)
+            raise typer.Exit()
 
         interpret_code_and_handle_exceptions(
             lexer = lexer,

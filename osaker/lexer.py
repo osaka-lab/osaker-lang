@@ -49,9 +49,9 @@ class OsakerLexer():
     def tokenize(self, string: str) -> List[Token]:
         tokens: List[Token] = []
 
-        position = 0
-
         for line_number, line in enumerate(string.splitlines()):
+
+            position = 0
 
             for char in line:
 
@@ -70,8 +70,8 @@ class OsakerLexer():
                             Token(
                                 type = token_type,
                                 value = token_value,
-                                line_number = line_number,
-                                character_number = position
+                                line_number = line_number + 1,
+                                character_number = position + 1
                             )
                         )
 
