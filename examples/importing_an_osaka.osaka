@@ -1,0 +1,3 @@
+:+ our_module! <-- "./import_me.osaka" ~osaka
+
+:< our_module!our_secret
