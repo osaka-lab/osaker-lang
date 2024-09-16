@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 import random
 from pprint import pformat
 from devgoldyutils import LoggerAdapter, Colours, short_str
+from pathlib import Path
 
 import re
 from .token import Token
@@ -20,7 +21,8 @@ from .errors import (
     OsakerIncorrectTypeError, 
     OsakerParseError, 
     OsakerNameError,
-    OsakerTypeError
+    OsakerTypeError,
+    OsakerModuleDoesntExist
 )
 
 __all__ = (
@@ -127,32 +129,55 @@ class OsakerParser():
                 else:
                     literal_representation = "nuh"
 
-            literal_representation = osaka_type.get_resp_colour().apply(literal_representation)
+            literal_representation = osaka_type.get_resp_colour().assignmentapply(literal_representation)
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
             )
 
     def __parse_import(self, tokens: List[Token], index: int):
-        tokens: Generator[Token] = iter(tokens[index + 1:])
+        tokens: Generator[Token] = iter(tokens[index + 2:])
 
         name_token = self.__parse_name(
             tokens_after_operator = tokens,
             error_message = "A name must be given for the namespace this osaka modules should be imported as! \n" \
                 "'my_module' is the namespace in the example below: \n"
-                    + self.__format_hint("Example: :+ my_module <-- \"./my_module.osaka\" ~osaka")
+                    + self.__format_hint("Example: :+ my_module! <-- \"./my_module.osaka\" ~osaka")
         )
 
-        # TODO: Parse (get) the module namespace, the assign arrow, then the literal following it. 
-        # That literal (~osaka) should be cast into pathlib.Path object and should be checked if it exists.
-        # Then we get the contents of that osaka module / script and initialise another OsakerParser and Lexer in this 
-        # function to use to parse the tokens in that osaka module. Once parsed, we take the globals from that OsakerParser and add them
-        # to the globals of our main OsakerParser (self._globals) but we append each one with "my_module!" in front of their current key.
-        # 
-        # Step 1: Parse module namespace, assign arrow and literal.
-        # Step 2: Turn the literal into a pathlib.Path object and check if it exists.
-        # Step 3: Get contents of the osaka module, init another OsakerParser and parse the tokens.
-        # Step 4: Add the globals from the module's OsakerParser to our main one (self._globals).
+        if name_token.value[-1] != "!":
+            raise OsakerSyntaxError("Where is the ! at the end?")
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type == "ASSIGN":
+            raise OsakerSyntaxError("Where is the assignment?")
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type == "LITERAL_STRING":
+            raise OsakerSyntaxError("Where is the module?")
+    
+        module = Path(next_token.value.replace('"', "")) # :woe:
+
+        next_token = next(tokens, None)
+
+        if next_token is None or not next_token.type == "TYPE":
+            raise OsakerSyntaxError("Where is the type?")
+        
+        if not module.exists():
+            raise OsakerModuleDoesntExist(f"The given module path: {module} doesn't exist.")
+        
+        content = open(module, "r").read()
+        
+        parser = OsakerParser()
+        lexer = OsakerLexer()
+
+        parser.parse(lexer.tokenize(content))
+
+        self._globals[f"{name_token.value}"] = parser._globals
+
+        # I hope this is what you want :3, also add better error messsages!
 
     def __parse_name(self, tokens_after_operator: Generator[Token], error_message: str) -> Token:
         next_token = next(tokens_after_operator, None)

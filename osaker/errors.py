@@ -25,3 +25,6 @@ class OsakerTypeError(OsakerError):
 
 class OsakerIncorrectTypeError(OsakerTypeError):
     ...
+
+class OsakerModuleDoesntExist(OsakerTypeError):
+    ...
