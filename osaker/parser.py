@@ -129,7 +129,7 @@ class OsakerParser():
                 else:
                     literal_representation = "nuh"
 
-            literal_representation = osaka_type.get_resp_colour().assignmentapply(literal_representation)
+            literal_representation = osaka_type.get_resp_colour().apply(literal_representation)
 
             print(
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
