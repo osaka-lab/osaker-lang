@@ -135,8 +135,8 @@ class OsakerParser():
                 ">>", f"{Colours.BLUE.apply(name_token.value)} <-- {literal_representation} ~{Colours.CLAY.apply(osaka_type.name.lower())}"
             )
 
-    def __parse_import(self, tokens: List[Token], index: int):
-        tokens: Generator[Token] = iter(tokens[index + 2:])
+    def __parse_import(self, all_tokens: List[Token], index: int):
+        tokens: Generator[Token] = iter(all_tokens[index + 2:])
 
         name_token = self.__parse_name(
             tokens_after_operator = tokens,
@@ -146,25 +146,42 @@ class OsakerParser():
         )
 
         if name_token.value[-1] != "!":
-            raise OsakerSyntaxError("Where is the ! at the end?")
+            hint_msg = 'Example: :o my_module! <-- \"./my_module.osaka\" ~osaka'
+
+            raise OsakerSyntaxError(
+                "You need to end a namespace with a \"!\".\n"
+                    + self.__format_hint(hint_msg)
+            )
 
         next_token = next(tokens, None)
 
         if next_token is None or not next_token.type == "ASSIGN":
-            raise OsakerSyntaxError("Where is the assignment?")
+            hint_msg = f'Example: :o {name_token.value} <-- \"./my_module.osaka\" ~osaka'
 
-        next_token = next(tokens, None)
+            raise OsakerSyntaxError(
+                "You can't just define an Ayumu object; you must assign something to it.\n"
+                    + self.__format_hint(hint_msg)
+            )
 
-        if next_token is None or not next_token.type == "LITERAL_STRING":
-            raise OsakerSyntaxError("Where is the module?")
-    
-        module = Path(next_token.value.replace('"', "")) # :woe:
-
+        module, _ = self.__parse_literal_or_name(
+            tokens_after_operator = tokens, 
+            all_tokens = all_tokens,
+            token_no_exist_error_message = "You need to assign a module path.",
+            ignore_type = True
+        )
+        
         next_token = next(tokens, None)
 
         if next_token is None or not next_token.type == "TYPE":
-            raise OsakerSyntaxError("Where is the type?")
-        
+            hint_msg = f'Example: :o {name_token.value} <-- \"./my_module.osaka\" ~osaka'
+
+            raise OsakerSyntaxError(
+                "You need to assign a type.\n"
+                    + self.__format_hint(hint_msg)
+            )
+
+        module = Path(module)
+
         if not module.exists():
             raise OsakerModuleDoesntExist(f"The given module path: {module} doesn't exist.")
         
