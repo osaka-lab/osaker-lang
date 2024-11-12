@@ -112,8 +112,18 @@ class OsakerParser():
                 "you are trying to delete from memory after ':3'. \nFor example: ':3 !print'."
         )
 
-        if name_token.value in self._globals:
-            ayumu_object = self._globals[name_token.value]
+        defined_import = None
+
+        if "!" in name_token.value:
+            split = name_token.value.split("!", 1)
+            defined_import = self._globals[split[0] + "!"]
+            name_token.value = split[1]
+
+        if name_token.value in self._globals or name_token.value in defined_import:
+            if defined_import is not None:
+                ayumu_object = defined_import[name_token.value]
+            else:
+                ayumu_object = self._globals[name_token.value]
 
             osaka_type = ayumu_object.type
 
@@ -193,8 +203,6 @@ class OsakerParser():
         parser.parse(lexer.tokenize(content))
 
         self._globals[f"{name_token.value}"] = parser._globals
-
-        # I hope this is what you want :3, also add better error messsages!
 
     def __parse_name(self, tokens_after_operator: Generator[Token], error_message: str) -> Token:
         next_token = next(tokens_after_operator, None)
