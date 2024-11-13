@@ -19,8 +19,8 @@
 - [x] Declaring and assigning ayumu objects (variables).
 - [x] Removing ayumu objects from memory.
 - [x] Inspect ayumu objects (objects).
-- [ ] Run osaka scripts / modules.
-- [ ] Import osaka modules (modules).
+- [x] Run osaka scripts / modules.
+- [x] Import osaka modules (modules).
 - [ ] Osaka standard lib (I/O operations: print statement, input statement, read / write files)
 
 ## What works atm?
