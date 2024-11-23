@@ -109,7 +109,7 @@ class OsakerParser():
         name_token = self.__parse_name(
             tokens_after_operator = tokens,
             error_message = "A name must be given for the Ayumu object " \
-                "you are trying to delete from memory after ':3'. \nFor example: ':3 !print'."
+                "you are trying to inspect after ':<'. \nFor example: ':< image_of_osaka'."
         )
 
         defined_import = None
@@ -119,7 +119,7 @@ class OsakerParser():
             defined_import = self._globals[split[0] + "!"]
             name_token.value = split[1]
 
-        if name_token.value in self._globals or name_token.value in defined_import:
+        if name_token.value in self._globals or defined_import is not None and name_token.value in defined_import:
             if defined_import is not None:
                 ayumu_object = defined_import[name_token.value]
             else:
